@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Manage Categories — Admin{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar admin-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar admin-avatar">{{ user.username|first|upper }}</div>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link">🏠 Dashboard</a>
+      <a href="{% url 'core:manage_articles' %}" class="dash-link">📰 Articles</a>
+      <a href="{% url 'core:manage_users' %}" class="dash-link">👥 Users</a>
+      <a href="{% url 'core:manage_categories' %}" class="dash-link active">📂 Categories</a>
+      <a href="{% url 'core:manage_comments' %}" class="dash-link">💬 Comments</a>
+      <hr class="nav-divider"><a href="{% url 'news:home' %}" class="dash-link">🌐 View Site</a>
+    </nav>
+  </div>
+
+  <div class="dash-main">
+    <h2 class="dash-title">Manage Categories</h2>
+
+    <!-- Create Category Form -->
+    <div class="dash-section">
+      <h3>Add New Category</h3>
+      <form method="post" class="inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <input type="text" name="name" placeholder="Category name" class="form-input" required>
+        <input type="text" name="icon" placeholder="Emoji icon" class="form-input icon-input" maxlength="4" value="📰">
+        <input type="color" name="color" value="#3B82F6" class="color-picker">
+        <button type="submit" class="btn-primary">Add Category</button>
+      </form>
+    </div>
+
+    <!-- Categories Table -->
+    <div class="dash-section">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Icon</th><th>Name</th><th>Slug</th><th>Articles</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for cat in categories %}
+            <tr>
+              <td style="font-size:1.5rem">{{ cat.icon }}</td>
+              <td><strong>{{ cat.name }}</strong></td>
+              <td><code>{{ cat.slug }}</code></td>
+              <td>{{ cat.article_count }}</td>
+              <td>
+                <a href="{% url 'news:category_detail' cat.slug %}" class="action-btn view" target="_blank">View</a>
+                <form method="post" action="" style="display:inline" onsubmit="return confirm('Delete category?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="cat_id" value="{{ cat.pk }}">
+                  <button type="submit" class="action-btn delete">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-row">No categories yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

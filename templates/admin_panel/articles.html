@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Manage Articles — Admin{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar admin-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar admin-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link">🏠 Dashboard</a>
+      <a href="{% url 'core:manage_articles' %}" class="dash-link active">📰 Articles</a>
+      <a href="{% url 'core:manage_users' %}" class="dash-link">👥 Users</a>
+      <a href="{% url 'core:manage_categories' %}" class="dash-link">📂 Categories</a>
+      <a href="{% url 'core:manage_comments' %}" class="dash-link">💬 Comments</a>
+      <hr class="nav-divider">
+      <a href="{% url 'news:home' %}" class="dash-link">🌐 View Site</a>
+    </nav>
+  </div>
+
+  <div class="dash-main">
+    <div class="dash-header">
+      <h2 class="dash-title">Manage Articles</h2>
+    </div>
+
+    <form method="get" class="filter-bar">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search..." class="form-input filter-search">
+      <select name="status" class="form-input filter-select">
+        <option value="">All Status</option>
+        <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+      <select name="source" class="form-input filter-select">
+        <option value="">All Sources</option>
+        <option value="api" {% if source_filter == 'api' %}selected{% endif %}>NewsAPI</option>
+        <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Reporter</option>
+      </select>
+      <button type="submit" class="btn-secondary">Filter</button>
+    </form>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Author/Source</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>AI</th>
+            <th>Views</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for article in articles %}
+          <tr>
+            <td class="td-title">
+              <a href="{% url 'news:article_detail' article.slug %}" target="_blank">{{ article.title|truncatewords:8 }}</a>
+            </td>
+            <td>{{ article.author|default:article.source_name|default:"—" }}</td>
+            <td>{{ article.category|default:"—" }}</td>
+            <td><span class="status-badge status-{{ article.status }}">{{ article.status }}</span></td>
+            <td>{% if article.ai_processed %}🤖{% else %}—{% endif %}</td>
+            <td>{{ article.view_count }}</td>
+            <td>{{ article.published_at|date:"M d, Y"|default:"—" }}</td>
+            <td class="td-actions td-actions-multi">
+              {% if article.status == 'pending' %}
+              <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                {% csrf_token %}<input type="hidden" name="action" value="publish">
+                <button type="submit" class="action-btn approve" title="Publish">✓</button>
+              </form>
+              <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                {% csrf_token %}<input type="hidden" name="action" value="reject">
+                <button type="submit" class="action-btn reject" title="Reject">✗</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                {% csrf_token %}<input type="hidden" name="action" value="feature">
+                <button type="submit" class="action-btn feature" title="Toggle Featured">⭐</button>
+              </form>
+              <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                {% csrf_token %}<input type="hidden" name="action" value="breaking">
+                <button type="submit" class="action-btn breaking" title="Toggle Breaking">⚡</button>
+              </form>
+              <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline" onsubmit="return confirm('Delete this article?')">
+                {% csrf_token %}<input type="hidden" name="action" value="delete">
+                <button type="submit" class="action-btn delete" title="Delete">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="empty-row">No articles found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if articles.has_other_pages %}
+    <div class="pagination">
+      {% if articles.has_previous %}<a href="?page={{ articles.previous_page_number }}&status={{ status_filter }}&source={{ source_filter }}&q={{ query }}" class="page-btn">← Prev</a>{% endif %}
+      <span class="page-info">Page {{ articles.number }} of {{ articles.paginator.num_pages }}</span>
+      {% if articles.has_next %}<a href="?page={{ articles.next_page_number }}&status={{ status_filter }}&source={{ source_filter }}&q={{ query }}" class="page-btn">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

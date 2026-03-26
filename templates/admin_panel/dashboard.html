@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel — PulseNews{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar admin-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar admin-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link active">🏠 Dashboard</a>
+      <a href="{% url 'core:manage_articles' %}" class="dash-link">📰 Articles</a>
+      <a href="{% url 'core:manage_users' %}" class="dash-link">👥 Users</a>
+      <a href="{% url 'core:manage_categories' %}" class="dash-link">📂 Categories</a>
+      <a href="{% url 'core:manage_comments' %}" class="dash-link">💬 Comments</a>
+      <hr class="nav-divider">
+      <a href="{% url 'reporter:dashboard' %}" class="dash-link">✏️ Reporter View</a>
+      <a href="{% url 'news:home' %}" class="dash-link">🌐 View Site</a>
+    </nav>
+  </div>
+
+  <div class="dash-main">
+    <div class="dash-header">
+      <h2 class="dash-title">Admin Dashboard</h2>
+      <div class="admin-quick-actions">
+        <a href="{% url 'core:bulk_ai_process' %}" class="btn-secondary">🤖 Bulk AI Process</a>
+        <a href="{% url 'core:fetch_news_trigger' %}?category=general" class="btn-primary">⚡ Fetch News</a>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">{{ stats.total_articles }}</div>
+        <div class="stat-label">Total Articles</div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-num">{{ stats.published }}</div>
+        <div class="stat-label">Published</div>
+      </div>
+      <div class="stat-card stat-yellow">
+        <div class="stat-num">{{ stats.pending }}</div>
+        <div class="stat-label">Pending Review</div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-num">{{ stats.total_users }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card stat-teal">
+        <div class="stat-num">{{ stats.reporters }}</div>
+        <div class="stat-label">Reporters</div>
+      </div>
+      <div class="stat-card stat-purple">
+        <div class="stat-num">{{ stats.total_views }}</div>
+        <div class="stat-label">Total Views</div>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <!-- Recent Articles -->
+      <div class="dash-section">
+        <div class="section-header">
+          <h3>Recent Articles</h3>
+          <a href="{% url 'core:manage_articles' %}" class="view-all">Manage All →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Title</th><th>Source</th><th>Status</th><th>Views</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {% for article in recent_articles %}
+              <tr>
+                <td class="td-title"><a href="{% url 'news:article_detail' article.slug %}" target="_blank">{{ article.title|truncatewords:8 }}</a></td>
+                <td><span class="source-badge source-{{ article.source_type }}">{{ article.source_type }}</span></td>
+                <td><span class="status-badge status-{{ article.status }}">{{ article.status }}</span></td>
+                <td>{{ article.view_count }}</td>
+                <td class="td-actions">
+                  {% if article.status == 'pending' %}
+                  <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                    {% csrf_token %}<input type="hidden" name="action" value="publish">
+                    <button type="submit" class="action-btn approve">✓ Approve</button>
+                  </form>
+                  <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                    {% csrf_token %}<input type="hidden" name="action" value="reject">
+                    <button type="submit" class="action-btn reject">✗ Reject</button>
+                  </form>
+                  {% else %}
+                  <form method="post" action="{% url 'core:article_action' article.pk %}" style="display:inline">
+                    {% csrf_token %}<input type="hidden" name="action" value="feature">
+                    <button type="submit" class="action-btn feature">⭐</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Categories Overview -->
+      <div class="dash-section">
+        <div class="section-header">
+          <h3>Categories</h3>
+          <a href="{% url 'core:manage_categories' %}" class="view-all">Manage →</a>
+        </div>
+        <div class="category-stats">
+          {% for cat in categories %}
+          <div class="cat-stat-row">
+            <span class="cat-icon-sm">{{ cat.icon }}</span>
+            <span class="cat-stat-name">{{ cat.name }}</span>
+            <div class="cat-bar-wrap">
+              <div class="cat-bar" style="width: {{ cat.article_count|default:0 }}%; background: {{ cat.color }}; max-width: 100%"></div>
+            </div>
+            <span class="cat-stat-count">{{ cat.article_count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Recent Users -->
+      <div class="dash-section">
+        <div class="section-header">
+          <h3>New Users</h3>
+          <a href="{% url 'core:manage_users' %}" class="view-all">Manage All →</a>
+        </div>
+        <div class="users-list">
+          {% for u in recent_users %}
+          <div class="user-row">
+            <div class="user-row-avatar">{{ u.username|first|upper }}</div>
+            <div class="user-row-info">
+              <strong>{{ u.username }}</strong>
+              <small>{{ u.email }}</small>
+            </div>
+            <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Fetch Logs -->
+      <div class="dash-section">
+        <div class="section-header">
+          <h3>NewsAPI Fetch Logs</h3>
+        </div>
+
+        <!-- Fetch by category -->
+        <div class="fetch-controls">
+          <select id="adminFetchCat" class="form-input">
+            {% for cat in categories %}<option value="{{ cat.slug }}">{{ cat.icon }} {{ cat.name }}</option>{% endfor %}
+          </select>
+          <button class="btn-primary" onclick="adminFetch()">⚡ Fetch Now</button>
+          <span id="adminFetchStatus"></span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Time</th><th>Category</th><th>Fetched</th><th>Saved</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for log in fetch_logs %}
+              <tr>
+                <td>{{ log.fetched_at|date:"M d H:i" }}</td>
+                <td>{{ log.category }}</td>
+                <td>{{ log.articles_fetched }}</td>
+                <td>{{ log.articles_saved }}</td>
+                <td>{% if log.success %}<span class="status-badge status-published">OK</span>{% else %}<span class="status-badge status-rejected">Error</span>{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="empty-row">No fetch logs yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function adminFetch() {
+  const cat = document.getElementById('adminFetchCat').value;
+  const status = document.getElementById('adminFetchStatus');
+  status.textContent = '⏳ Fetching...';
+  fetch(`{% url 'core:fetch_news_trigger' %}?category=${cat}`)
+    .then(r => { status.textContent = '✓ Done! Refreshing...'; setTimeout(() => location.reload(), 1200); })
+    .catch(() => { status.textContent = '✗ Failed'; });
+}
+</script>
+{% endblock %}

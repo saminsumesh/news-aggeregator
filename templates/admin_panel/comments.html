@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Manage Comments — Admin{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar admin-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar admin-avatar">{{ user.username|first|upper }}</div>
+      <span class="role-badge role-admin">Admin</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link">🏠 Dashboard</a>
+      <a href="{% url 'core:manage_articles' %}" class="dash-link">📰 Articles</a>
+      <a href="{% url 'core:manage_users' %}" class="dash-link">👥 Users</a>
+      <a href="{% url 'core:manage_categories' %}" class="dash-link">📂 Categories</a>
+      <a href="{% url 'core:manage_comments' %}" class="dash-link active">💬 Comments</a>
+      <hr class="nav-divider"><a href="{% url 'news:home' %}" class="dash-link">🌐 View Site</a>
+    </nav>
+  </div>
+
+  <div class="dash-main">
+    <h2 class="dash-title">Manage Comments</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>User</th><th>Comment</th><th>Article</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for comment in comments %}
+          <tr>
+            <td>{{ comment.user.username }}</td>
+            <td>{{ comment.content|truncatewords:12 }}</td>
+            <td><a href="{% url 'news:article_detail' comment.article.slug %}" target="_blank">{{ comment.article.title|truncatewords:6 }}</a></td>
+            <td>{{ comment.created_at|date:"M d, Y" }}</td>
+            <td>{% if comment.is_approved %}<span class="status-badge status-published">Approved</span>{% else %}<span class="status-badge status-pending">Pending</span>{% endif %}</td>
+            <td class="td-actions">
+              {% if not comment.is_approved %}
+              <form method="post" action="{% url 'core:comment_action' comment.pk %}" style="display:inline">
+                {% csrf_token %}<input type="hidden" name="action" value="approve">
+                <button type="submit" class="action-btn approve">Approve</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'core:comment_action' comment.pk %}" style="display:inline" onsubmit="return confirm('Delete comment?')">
+                {% csrf_token %}<input type="hidden" name="action" value="delete">
+                <button type="submit" class="action-btn delete">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty-row">No comments found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if comments.has_other_pages %}
+    <div class="pagination">
+      {% if comments.has_previous %}<a href="?page={{ comments.previous_page_number }}" class="page-btn">← Prev</a>{% endif %}
+      <span class="page-info">Page {{ comments.number }} of {{ comments.paginator.num_pages }}</span>
+      {% if comments.has_next %}<a href="?page={{ comments.next_page_number }}" class="page-btn">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

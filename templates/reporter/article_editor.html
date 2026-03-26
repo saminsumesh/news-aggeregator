@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}{% if article %}Edit Article{% else %}New Article{% endif %} — PulseNews{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-reporter">Reporter</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'reporter:dashboard' %}" class="dash-link">📊 Dashboard</a>
+      <a href="{% url 'reporter:article_list' %}" class="dash-link">📋 My Articles</a>
+      <a href="{% url 'reporter:article_create' %}" class="dash-link highlight">✏️ New Article</a>
+      <a href="{% url 'accounts:profile' %}" class="dash-link">👤 Profile</a>
+    </nav>
+  </div>
+
+  <div class="dash-main editor-main">
+    <div class="editor-header">
+      <h2 class="dash-title">{% if article %}Edit Article{% else %}New Article{% endif %}</h2>
+      {% if article %}
+      <div class="editor-header-actions">
+        <a href="{% url 'news:article_detail' article.slug %}" class="btn-secondary" target="_blank">👁 Preview</a>
+        <a href="{% url 'reporter:article_delete' article.pk %}" class="btn-danger-outline">🗑 Delete</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if article %}
+    <!-- AI Assist Bar -->
+    <div class="ai-assist-bar">
+      <span class="ai-bar-label">🤖 AI Assist:</span>
+      <button class="ai-bar-btn" onclick="aiAssist('summarize')">✨ Auto Summarize</button>
+      <button class="ai-bar-btn" onclick="aiAssist('rephrase')">🔄 Rephrase Content</button>
+      <button class="ai-bar-btn" onclick="aiAssist('tags')">🏷 Generate Tags</button>
+      <div id="aiAssistStatus" class="ai-assist-status"></div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="editor-form" id="editorForm">
+      {% csrf_token %}
+
+      <div class="editor-layout">
+        <!-- Main Editor -->
+        <div class="editor-body">
+          <div class="field-group">
+            <label class="field-label">Headline *</label>
+            {{ form.title }}
+            {% if form.title.errors %}<span class="field-error">{{ form.title.errors.0 }}</span>{% endif %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Summary / Deck</label>
+            {{ form.summary }}
+            {% if form.summary.errors %}<span class="field-error">{{ form.summary.errors.0 }}</span>{% endif %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Full Article Content</label>
+            {{ form.content }}
+            {% if form.content.errors %}<span class="field-error">{{ form.content.errors.0 }}</span>{% endif %}
+            <small class="field-help">Write the full article body here. AI can help rephrase it after saving.</small>
+          </div>
+
+          {% if article and article.rephrased_content %}
+          <div class="field-group">
+            <label class="field-label">🤖 AI-Rephrased Version <small class="badge-ai">AI Generated</small></label>
+            <div class="rephrased-preview">{{ article.rephrased_content|linebreaks }}</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Sidebar Meta -->
+        <div class="editor-meta">
+          <!-- Publish Actions -->
+          <div class="meta-card publish-card">
+            <h4>📤 Publish</h4>
+            {% if article %}
+            <div class="current-status">
+              Status: <span class="status-badge status-{{ article.status }}">{{ article.status }}</span>
+            </div>
+            {% endif %}
+            <div class="publish-buttons">
+              <button type="submit" name="action" value="draft" class="btn-block btn-draft">💾 Save Draft</button>
+              <button type="submit" name="action" value="submit" class="btn-block btn-submit">📨 Submit for Review</button>
+              {% if user.is_staff or user.is_admin_user %}
+              <button type="submit" name="action" value="publish" class="btn-block btn-publish">🚀 Publish Now</button>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Category & Tags -->
+          <div class="meta-card">
+            <h4>📂 Category</h4>
+            {{ form.category }}
+            {% if form.category.errors %}<span class="field-error">{{ form.category.errors.0 }}</span>{% endif %}
+          </div>
+
+          <div class="meta-card">
+            <h4>🏷 Tags</h4>
+            {{ form.tags_input }}
+            {% if article %}
+            <div class="current-tags">
+              {% for tag in article.tags.all %}
+              <span class="tag-chip">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Image -->
+          <div class="meta-card">
+            <h4>🖼 Cover Image URL</h4>
+            {{ form.image_url }}
+            {% if article and article.image_url %}
+            <img src="{{ article.image_url }}" alt="Cover" class="image-preview" id="imgPreview">
+            {% else %}
+            <img src="" alt="Preview" class="image-preview hidden" id="imgPreview">
+            {% endif %}
+          </div>
+
+          <!-- Flags -->
+          <div class="meta-card">
+            <h4>🚩 Flags</h4>
+            <label class="checkbox-label">
+              {{ form.is_featured }} Featured Article
+            </label>
+            <label class="checkbox-label">
+              {{ form.is_breaking }} Breaking News
+            </label>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if article %}
+const articleId = '{{ article.pk }}';
+
+function aiAssist(action) {
+  const status = document.getElementById('aiAssistStatus');
+  status.textContent = '⏳ Processing...';
+  status.className = 'ai-assist-status loading';
+  fetch(`{% url 'reporter:ai_assist' article.pk %}?action=${action}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        if (action === 'summarize' && data.result) {
+          document.querySelector('[name="summary"]').value = data.result;
+          status.textContent = '✓ Summary updated!';
+        } else if (action === 'rephrase' && data.result) {
+          status.textContent = '✓ Rephrased! Save to see changes.';
+        } else if (action === 'tags' && data.tags) {
+          const tagInput = document.querySelector('[name="tags_input"]');
+          tagInput.value = data.tags.join(', ');
+          status.textContent = '✓ Tags added: ' + data.tags.join(', ');
+        }
+        status.className = 'ai-assist-status success';
+      }
+    })
+    .catch(() => {
+      status.textContent = '✗ AI request failed';
+      status.className = 'ai-assist-status error';
+    });
+}
+{% endif %}
+
+// Image preview
+document.querySelector('[name="image_url"]')?.addEventListener('input', function() {
+  const preview = document.getElementById('imgPreview');
+  if (this.value) {
+    preview.src = this.value;
+    preview.classList.remove('hidden');
+  } else {
+    preview.classList.add('hidden');
+  }
+});
+</script>
+{% endblock %}

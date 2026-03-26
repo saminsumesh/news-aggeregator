@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Reporter Dashboard — PulseNews{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+
+  <!-- Dash Sidebar -->
+  <div class="dash-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-reporter">Reporter</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'reporter:dashboard' %}" class="dash-link active">📊 Dashboard</a>
+      <a href="{% url 'reporter:article_list' %}" class="dash-link">📋 My Articles</a>
+      <a href="{% url 'reporter:article_create' %}" class="dash-link highlight">✏️ New Article</a>
+      {% if user.is_admin_user or user.is_staff %}
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link">⚙️ Admin Panel</a>
+      {% endif %}
+      <a href="{% url 'accounts:profile' %}" class="dash-link">👤 Profile</a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="dash-main">
+    <div class="dash-header">
+      <h2 class="dash-title">Welcome, {{ user.first_name|default:user.username }} ✌️</h2>
+      <a href="{% url 'reporter:article_create' %}" class="btn-primary">+ New Article</a>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">{{ stats.total }}</div>
+        <div class="stat-label">Total Articles</div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-num">{{ stats.published }}</div>
+        <div class="stat-label">Published</div>
+      </div>
+      <div class="stat-card stat-yellow">
+        <div class="stat-num">{{ stats.draft }}</div>
+        <div class="stat-label">Drafts</div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-num">{{ stats.pending }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card stat-purple">
+        <div class="stat-num">{{ stats.views }}</div>
+        <div class="stat-label">Total Views</div>
+      </div>
+    </div>
+
+    <!-- Recent Articles Table -->
+    <div class="dash-section">
+      <div class="section-header">
+        <h3>Recent Articles</h3>
+        <a href="{% url 'reporter:article_list' %}" class="view-all">View All →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Views</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for article in recent_articles %}
+            <tr>
+              <td class="td-title">
+                <a href="{% url 'news:article_detail' article.slug %}" target="_blank">
+                  {{ article.title|truncatewords:8 }}
+                </a>
+              </td>
+              <td>{{ article.category|default:"—" }}</td>
+              <td>
+                <span class="status-badge status-{{ article.status }}">{{ article.status }}</span>
+              </td>
+              <td>{{ article.view_count }}</td>
+              <td>{{ article.created_at|date:"M d, Y" }}</td>
+              <td class="td-actions">
+                <a href="{% url 'reporter:article_edit' article.pk %}" class="action-btn edit">Edit</a>
+                <a href="{% url 'news:article_detail' article.slug %}" class="action-btn view" target="_blank">View</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-row">No articles yet. <a href="{% url 'reporter:article_create' %}">Create your first!</a></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI Tools Panel -->
+    <div class="dash-section">
+      <h3>🤖 AI Tools</h3>
+      <div class="ai-tools-grid">
+        <div class="ai-tool-card">
+          <div class="ai-tool-icon">✍️</div>
+          <h4>AI Article Writer</h4>
+          <p>Create a new article and use AI to enhance, summarize or rephrase your content.</p>
+          <a href="{% url 'reporter:article_create' %}" class="btn-secondary">Start Writing</a>
+        </div>
+        <div class="ai-tool-card">
+          <div class="ai-tool-icon">🔍</div>
+          <h4>Fetch Latest News</h4>
+          <p>Pull fresh articles from NewsAPI and process them with AI automatically.</p>
+          <div class="fetch-select">
+            <select id="fetchCatSelect" class="form-input">
+              {% for cat in categories %}<option value="{{ cat.slug }}">{{ cat.icon }} {{ cat.name }}</option>{% endfor %}
+            </select>
+            <button class="btn-secondary" onclick="reporterFetch()">Fetch</button>
+          </div>
+          <div id="repFetchStatus"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dash-main -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function reporterFetch() {
+  const cat = document.getElementById('fetchCatSelect').value;
+  const status = document.getElementById('repFetchStatus');
+  status.textContent = 'Fetching...';
+  fetch(`{% url 'news:fetch_news_api' %}?category=${cat}`)
+    .then(r => r.json())
+    .then(d => {
+      status.textContent = `✓ Saved ${d.saved} new articles`;
+      status.style.color = 'green';
+    })
+    .catch(() => { status.textContent = '✗ Failed'; status.style.color = 'red'; });
+}
+</script>
+{% endblock %}

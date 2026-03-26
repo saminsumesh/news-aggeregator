@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}My Articles — PulseNews{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-reporter">Reporter</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'reporter:dashboard' %}" class="dash-link">📊 Dashboard</a>
+      <a href="{% url 'reporter:article_list' %}" class="dash-link active">📋 My Articles</a>
+      <a href="{% url 'reporter:article_create' %}" class="dash-link highlight">✏️ New Article</a>
+      <a href="{% url 'accounts:profile' %}" class="dash-link">👤 Profile</a>
+    </nav>
+  </div>
+
+  <div class="dash-main">
+    <div class="dash-header">
+      <h2 class="dash-title">My Articles</h2>
+      <a href="{% url 'reporter:article_create' %}" class="btn-primary">+ New Article</a>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="filter-bar">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search articles..." class="form-input filter-search">
+      <select name="status" class="form-input filter-select">
+        <option value="">All Status</option>
+        <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+      <button type="submit" class="btn-secondary">Filter</button>
+      {% if query or status_filter %}<a href="{% url 'reporter:article_list' %}" class="btn-text">Clear</a>{% endif %}
+    </form>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>AI</th>
+            <th>Views</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for article in articles %}
+          <tr>
+            <td class="td-title">
+              <a href="{% url 'news:article_detail' article.slug %}" target="_blank">{{ article.title|truncatewords:10 }}</a>
+            </td>
+            <td>{{ article.category|default:"—" }}</td>
+            <td><span class="status-badge status-{{ article.status }}">{{ article.status }}</span></td>
+            <td>{% if article.ai_processed %}<span class="ai-dot" title="AI Processed">🤖</span>{% else %}<span class="no-ai">—</span>{% endif %}</td>
+            <td>{{ article.view_count }}</td>
+            <td>{{ article.created_at|date:"M d, Y" }}</td>
+            <td class="td-actions">
+              <a href="{% url 'reporter:article_edit' article.pk %}" class="action-btn edit">Edit</a>
+              <a href="{% url 'reporter:article_delete' article.pk %}" class="action-btn delete">Del</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-row">No articles found. <a href="{% url 'reporter:article_create' %}">Write your first!</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if articles.has_other_pages %}
+    <div class="pagination">
+      {% if articles.has_previous %}<a href="?page={{ articles.previous_page_number }}&status={{ status_filter }}&q={{ query }}" class="page-btn">← Prev</a>{% endif %}
+      <span class="page-info">Page {{ articles.number }} of {{ articles.paginator.num_pages }}</span>
+      {% if articles.has_next %}<a href="?page={{ articles.next_page_number }}&status={{ status_filter }}&q={{ query }}" class="page-btn">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

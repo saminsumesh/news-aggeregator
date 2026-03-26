@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load news_filters %}
+{% block title %}{{ article.title }} — PulseNews{% endblock %}
+
+{% block content %}
+<div class="article-layout">
+  <div class="article-main">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a href="{% url 'news:home' %}">Home</a>
+      {% if article.category %}
+      <span>›</span>
+      <a href="{% url 'news:category_detail' article.category.slug %}">{{ article.category.name }}</a>
+      {% endif %}
+      <span>›</span>
+      <span>{{ article.title|truncatewords:6 }}</span>
+    </nav>
+
+    <!-- Article Header -->
+    <header class="article-header">
+      {% if article.is_breaking %}
+      <div class="breaking-banner">⚡ BREAKING NEWS</div>
+      {% endif %}
+      {% if article.category %}
+      <a href="{% url 'news:category_detail' article.category.slug %}"
+         class="article-cat-badge"
+         style="background: {{ article.category.color }}">
+        {{ article.category.name }}
+      </a>
+      {% endif %}
+      <h1 class="article-title">{{ article.title }}</h1>
+      {% if article.summary %}
+      <p class="article-deck">{{ article.summary }}</p>
+      {% endif %}
+      <div class="article-byline">
+        <div class="byline-info">
+          <span class="byline-author">
+            {% if article.author %}
+            By <strong>{{ article.author.get_full_name|default:article.author.username }}</strong>
+            {% else %}
+            Source: <strong>{{ article.source_name }}</strong>
+            {% endif %}
+          </span>
+          <span class="byline-date">
+            {{ article.published_at|date:"F j, Y • g:i A" }}
+          </span>
+        </div>
+        <div class="article-actions">
+          <span class="view-count">👁 {{ article.view_count }} views</span>
+          {% if article.ai_processed %}
+          <span class="ai-badge">🤖 AI Enhanced</span>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Image -->
+    {% if article.image_url %}
+    <figure class="article-hero-img">
+      <img src="{{ article.image_url }}" alt="{{ article.title }}">
+      {% if article.source_name %}
+      <figcaption>Image credit: {{ article.source_name }}</figcaption>
+      {% endif %}
+    </figure>
+    {% endif %}
+
+    <!-- Article Body -->
+    <div class="article-body">
+      {% if article.rephrased_content %}
+        <div class="content-block rephrased">
+          <div class="content-label">
+            <span class="ai-badge-inline">🤖 AI Enhanced Version</span>
+          </div>
+          {% for para in article.rephrased_content|linebreak_paras %}
+          <p>{{ para }}</p>
+          {% empty %}
+          {{ article.rephrased_content|linebreaks }}
+          {% endfor %}
+          {{ article.rephrased_content|linebreaks }}
+        </div>
+      {% elif article.content %}
+        <div class="content-block">
+          {{ article.content|linebreaks }}
+        </div>
+      {% elif article.summary %}
+        <div class="content-block">
+          <p>{{ article.summary }}</p>
+        </div>
+      {% else %}
+        <div class="content-placeholder">
+          <p>Full article content is being loaded...</p>
+        </div>
+      {% endif %}
+
+      {% if article.source_name %}
+      <div class="source-attribution">
+        <p>📌 Source: <strong>{{ article.source_name }}</strong></p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Tags -->
+    {% if article.tags.all %}
+    <div class="article-tags">
+      <span class="tags-label">Tags:</span>
+      {% for tag in article.tags.all %}
+      <a href="{% url 'news:search' %}?q={{ tag.name }}" class="tag-link">#{{ tag.name }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Comments Section -->
+    <section class="comments-section">
+      <h3 class="comments-title">Comments ({{ comments.count }})</h3>
+
+      {% if user.is_authenticated %}
+      <form method="post" action="{% url 'news:add_comment' article.slug %}" class="comment-form">
+        {% csrf_token %}
+        <textarea name="content" rows="3" placeholder="Share your thoughts..." class="form-input" required></textarea>
+        <button type="submit" class="btn-primary">Post Comment</button>
+      </form>
+      {% else %}
+      <p class="login-prompt">
+        <a href="{% url 'accounts:login' %}">Sign in</a> to leave a comment.
+      </p>
+      {% endif %}
+
+      <div class="comments-list">
+        {% for comment in comments %}
+        <div class="comment">
+          <div class="comment-header">
+            <span class="comment-avatar">{{ comment.user.username|first|upper }}</span>
+            <div>
+              <strong>{{ comment.user.username }}</strong>
+              <small>{{ comment.created_at|timesince }} ago</small>
+            </div>
+          </div>
+          <p class="comment-body">{{ comment.content }}</p>
+        </div>
+        {% empty %}
+        <p class="no-comments">No comments yet. Be the first!</p>
+        {% endfor %}
+      </div>
+    </section>
+
+  </div><!-- /article-main -->
+
+  <!-- Sidebar -->
+  <aside class="article-sidebar">
+    {% if related %}
+    <div class="sidebar-widget">
+      <h3 class="widget-title">Related Articles</h3>
+      {% for art in related %}
+      <div class="related-card">
+        {% if art.image_url %}
+        <img src="{{ art.image_url }}" alt="{{ art.title }}" class="related-img">
+        {% endif %}
+        <div>
+          <a href="{% url 'news:article_detail' art.slug %}" class="related-title">
+            {{ art.title|truncatewords:10 }}
+          </a>
+          <small class="related-time">{{ art.published_at|timesince }} ago</small>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="sidebar-widget">
+      <h3 class="widget-title">📂 Categories</h3>
+      <div class="category-list">
+        {% for cat in categories %}
+        <a href="{% url 'news:category_detail' cat.slug %}" class="cat-item">
+          <span>{{ cat.icon }} {{ cat.name }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /article-layout -->
+{% endblock %}

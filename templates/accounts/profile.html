@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Profile — PulseNews{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dash-sidebar">
+    <div class="dash-user-card">
+      <div class="dash-avatar">{{ user.username|first|upper }}</div>
+      <h3>{{ user.get_full_name|default:user.username }}</h3>
+      <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
+    </div>
+    <nav class="dash-nav">
+      <a href="{% url 'accounts:profile' %}" class="dash-link active">👤 Profile</a>
+      {% if user.is_reporter or user.is_staff %}
+      <a href="{% url 'reporter:dashboard' %}" class="dash-link">📊 Reporter Dashboard</a>
+      {% endif %}
+      {% if user.is_admin_user or user.is_staff %}
+      <a href="{% url 'core:admin_dashboard' %}" class="dash-link">⚙️ Admin Panel</a>
+      {% endif %}
+      <a href="{% url 'accounts:logout' %}" class="dash-link logout">🚪 Sign Out</a>
+    </nav>
+  </div>
+  <div class="dash-main">
+    <h2 class="dash-title">Edit Profile</h2>
+    <form method="post" enctype="multipart/form-data" class="profile-form">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="field-group">
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.errors %}<span class="field-error">{{ field.errors.0 }}</span>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn-primary">Save Changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

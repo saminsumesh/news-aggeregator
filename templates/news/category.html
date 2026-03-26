@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}{{ category.name }} — PulseNews{% endblock %}
+{% block content %}
+<div class="category-layout">
+  <div class="category-hero" style="--cat-color: {{ category.color }}">
+    <span class="category-hero-icon">{{ category.icon }}</span>
+    <h1>{{ category.name }}</h1>
+    {% if category.description %}<p>{{ category.description }}</p>{% endif %}
+  </div>
+
+  <div class="articles-grid">
+    {% for article in articles %}
+    <article class="article-card">
+      {% if article.image_url %}
+      <a href="{% url 'news:article_detail' article.slug %}" class="card-img-wrap">
+        <img src="{{ article.image_url }}" alt="{{ article.title }}" loading="lazy" class="card-img">
+      </a>
+      {% endif %}
+      <div class="card-body">
+        <h2 class="card-title"><a href="{% url 'news:article_detail' article.slug %}">{{ article.title|truncatewords:14 }}</a></h2>
+        <p class="card-summary">{{ article.summary|truncatewords:22 }}</p>
+        <div class="card-footer">
+          <span>{{ article.source_name|default:article.author }}</span>
+          <span>{{ article.published_at|timesince }} ago</span>
+        </div>
+      </div>
+    </article>
+    {% empty %}
+    <div class="empty-state"><div class="empty-icon">{{ category.icon }}</div><h3>No articles in {{ category.name }} yet.</h3></div>
+    {% endfor %}
+  </div>
+
+  {% if articles.has_other_pages %}
+  <div class="pagination">
+    {% if articles.has_previous %}<a href="?page={{ articles.previous_page_number }}" class="page-btn">← Previous</a>{% endif %}
+    <span class="page-info">Page {{ articles.number }} of {{ articles.paginator.num_pages }}</span>
+    {% if articles.has_next %}<a href="?page={{ articles.next_page_number }}" class="page-btn">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

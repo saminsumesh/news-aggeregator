@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — PulseNews{% endblock %}
+{% block content %}
+<div class="auth-layout">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="logo-pulse">Pulse</span><span class="logo-news">News</span>
+    </div>
+    <h2 class="auth-title">Welcome back</h2>
+    <p class="auth-sub">Sign in to your account</p>
+
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="field-group">
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.errors %}
+        <span class="field-error">{{ field.errors.0 }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if form.non_field_errors %}
+      <div class="form-error">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+      <button type="submit" class="btn-auth">Sign In</button>
+    </form>
+
+    <p class="auth-switch">Don't have an account? <a href="{% url 'accounts:register' %}">Create one free</a></p>
+  </div>
+
+  <div class="auth-visual">
+    <div class="auth-visual-inner">
+      <h3>"The first duty of a newspaper is to be accurate."</h3>
+      <p>— E.W. Scripps</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

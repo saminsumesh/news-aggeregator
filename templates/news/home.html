@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}PulseNews — Latest News{% endblock %}
+
+{% block content %}
+<div class="home-layout">
+
+  <!-- Category Pills -->
+  <div class="category-strip">
+    <a href="{% url 'news:home' %}" class="cat-pill {% if not current_category %}active{% endif %}">All</a>
+    {% for cat in categories %}
+    <a href="{% url 'news:home' %}?category={{ cat.slug }}"
+       class="cat-pill {% if current_category == cat.slug %}active{% endif %}"
+       style="--cat-color: {{ cat.color }}">
+      {{ cat.icon }} {{ cat.name }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="content-grid">
+    <div class="feed-main">
+
+      <!-- Featured Article Hero -->
+      {% if featured and not current_category %}
+      <div class="hero-article">
+        {% if featured.image_url %}
+        <div class="hero-img" style="background-image: url('{{ featured.image_url }}')"></div>
+        {% endif %}
+        <div class="hero-body">
+          {% if featured.category %}
+          <a class="article-cat-badge" style="background: {{ featured.category.color }}">
+            {{ featured.category.name }}
+          </a>
+          {% endif %}
+          <h1 class="hero-title">
+            <a href="{% url 'news:article_detail' featured.slug %}">{{ featured.title }}</a>
+          </h1>
+          <p class="hero-summary">{{ featured.summary|truncatewords:40 }}</p>
+          <div class="article-meta">
+            <span>{% if featured.author %}{{ featured.author.get_full_name|default:featured.author.username }}{% else %}{{ featured.source_name }}{% endif %}</span>
+            <span class="meta-dot">·</span>
+            <span>{{ featured.published_at|timesince }} ago</span>
+            <span class="meta-dot">·</span>
+            <span>{{ featured.view_count }} views</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Article Grid -->
+      <div class="articles-grid">
+        {% for article in articles %}
+        {% if article != featured %}
+        <article class="article-card">
+          {% if article.image_url %}
+          <a href="{% url 'news:article_detail' article.slug %}" class="card-img-wrap">
+            <img src="{{ article.image_url }}" alt="{{ article.title }}" loading="lazy" class="card-img">
+            {% if article.is_breaking %}
+            <span class="badge-breaking">Breaking</span>
+            {% endif %}
+          </a>
+          {% endif %}
+          <div class="card-body">
+            {% if article.category %}
+            <a href="{% url 'news:category_detail' article.category.slug %}" class="card-category" style="color: {{ article.category.color }}">
+              {{ article.category.name }}
+            </a>
+            {% endif %}
+            <h2 class="card-title">
+              <a href="{% url 'news:article_detail' article.slug %}">{{ article.title|truncatewords:14 }}</a>
+            </h2>
+            <p class="card-summary">{{ article.summary|truncatewords:22 }}</p>
+            <div class="card-footer">
+              <span class="card-source">{% if article.author %}{{ article.author.username }}{% else %}{{ article.source_name }}{% endif %}</span>
+              <span class="card-time">{{ article.published_at|timesince|truncatewords:2 }} ago</span>
+            </div>
+          </div>
+        </article>
+        {% endif %}
+        {% empty %}
+        <div class="empty-state">
+          <div class="empty-icon">📰</div>
+          <h3>No articles yet</h3>
+          <p>Check back soon or fetch the latest news.</p>
+          {% if user.is_staff or user.is_reporter %}
+          <a href="{% url 'news:fetch_news_api' %}?category=general" class="btn-primary">Fetch News Now</a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if articles.has_other_pages %}
+      <div class="pagination">
+        {% if articles.has_previous %}
+        <a href="?page={{ articles.previous_page_number }}{% if current_category %}&category={{ current_category }}{% endif %}" class="page-btn">← Previous</a>
+        {% endif %}
+        <span class="page-info">Page {{ articles.number }} of {{ articles.paginator.num_pages }}</span>
+        {% if articles.has_next %}
+        <a href="?page={{ articles.next_page_number }}{% if current_category %}&category={{ current_category }}{% endif %}" class="page-btn">Next →</a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div><!-- /feed-main -->
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <!-- Trending -->
+      <div class="sidebar-widget">
+        <h3 class="widget-title"><span>🔥</span> Trending</h3>
+        <ol class="trending-list">
+          {% for article in trending %}
+          <li>
+            <a href="{% url 'news:article_detail' article.slug %}">
+              <span class="trend-num">{{ forloop.counter }}</span>
+              <span class="trend-title">{{ article.title|truncatewords:10 }}</span>
+            </a>
+            <small class="trend-views">{{ article.view_count }} views</small>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+
+      <!-- Categories widget -->
+      <div class="sidebar-widget">
+        <h3 class="widget-title"><span>📂</span> Categories</h3>
+        <div class="category-list">
+          {% for cat in categories %}
+          <a href="{% url 'news:category_detail' cat.slug %}" class="cat-item">
+            <span class="cat-icon">{{ cat.icon }}</span>
+            <span class="cat-name">{{ cat.name }}</span>
+            <span class="cat-count">{{ cat.articles.count }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if user.is_staff or user.is_reporter %}
+      <!-- Quick Fetch widget for reporters/admins -->
+      <div class="sidebar-widget widget-admin">
+        <h3 class="widget-title"><span>⚡</span> Quick Fetch</h3>
+        <p class="widget-desc">Pull latest articles from NewsAPI</p>
+        <div class="fetch-buttons">
+          {% for cat in categories %}
+          <button class="fetch-btn" onclick="fetchCategory('{{ cat.slug }}')">{{ cat.icon }} {{ cat.name }}</button>
+          {% endfor %}
+        </div>
+        <div id="fetchStatus" class="fetch-status"></div>
+      </div>
+      {% endif %}
+
+    </aside>
+  </div><!-- /content-grid -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fetchCategory(cat) {
+  const status = document.getElementById('fetchStatus');
+  status.textContent = 'Fetching...';
+  status.className = 'fetch-status loading';
+  fetch(`{% url 'news:fetch_news_api' %}?category=${cat}`, {
+    headers: {'X-CSRFToken': '{{ csrf_token }}'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    status.textContent = `✓ Saved ${data.saved} new articles`;
+    status.className = 'fetch-status success';
+    setTimeout(() => location.reload(), 1500);
+  })
+  .catch(() => {
+    status.textContent = '✗ Fetch failed';
+    status.className = 'fetch-status error';
+  });
+}
+</script>
+{% endblock %}

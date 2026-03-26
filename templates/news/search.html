@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Search: {{ query }} — PulseNews{% endblock %}
+{% block content %}
+<div class="search-layout">
+  <div class="search-header">
+    <h1>Search Results</h1>
+    {% if query %}
+    <p>{{ articles.paginator.count }} result{{ articles.paginator.count|pluralize }} for "<strong>{{ query }}</strong>"</p>
+    {% endif %}
+  </div>
+
+  <form action="{% url 'news:search' %}" method="get" class="search-bar-big">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search news..." class="form-input" autofocus>
+    <button type="submit" class="btn-primary">Search</button>
+  </form>
+
+  <div class="articles-grid">
+    {% for article in articles %}
+    <article class="article-card">
+      {% if article.image_url %}
+      <a href="{% url 'news:article_detail' article.slug %}" class="card-img-wrap">
+        <img src="{{ article.image_url }}" alt="{{ article.title }}" loading="lazy" class="card-img">
+      </a>
+      {% endif %}
+      <div class="card-body">
+        {% if article.category %}
+        <a href="{% url 'news:category_detail' article.category.slug %}" class="card-category" style="color:{{ article.category.color }}">{{ article.category.name }}</a>
+        {% endif %}
+        <h2 class="card-title"><a href="{% url 'news:article_detail' article.slug %}">{{ article.title|truncatewords:14 }}</a></h2>
+        <p class="card-summary">{{ article.summary|truncatewords:22 }}</p>
+        <div class="card-footer">
+          <span>{{ article.source_name }}</span>
+          <span>{{ article.published_at|timesince }} ago</span>
+        </div>
+      </div>
+    </article>
+    {% empty %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h3>No results found</h3>
+      <p>Try different keywords.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if articles.has_other_pages %}
+  <div class="pagination">
+    {% if articles.has_previous %}<a href="?q={{ query }}&page={{ articles.previous_page_number }}" class="page-btn">← Previous</a>{% endif %}
+    <span class="page-info">Page {{ articles.number }} of {{ articles.paginator.num_pages }}</span>
+    {% if articles.has_next %}<a href="?q={{ query }}&page={{ articles.next_page_number }}" class="page-btn">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
